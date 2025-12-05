@@ -2,37 +2,20 @@ services:
 
   php:
     build: docker/php
-    container_name: php-fpm
+    container_name: php
     tty: true
     volumes:
       - ./:/var/www/app
       - ./docker/php/z-overrides.ini:/usr/local/etc/php/conf.d/z-overrides.ini
     user: "${UID:-1000}:${GID:-1000}"
     depends_on:
-      - db
+      - mysql
     networks:
-      - db-network
-      - web-network
+      - app-network
     env_file:
       .env
 
-  nginx:
-    image: nginx:1.27.5
-    container_name: nginx
-    tty: true
-    volumes:
-      - ./docker/nginx:/etc/nginx/conf.d
-      - ./:/var/www/app
-    ports:
-      - "${NGINX_EXTERNAL_PORT:-3007}:80"
-    depends_on:
-      - php
-    networks:
-      - web-network
-    env_file:
-      .env
-
-  db:
+  mysql:
     image: mysql:8.1
     container_name: mysql
     restart: always
@@ -46,12 +29,10 @@ services:
     volumes:
       - ./volumes/mysql:/var/lib/mysql
     networks:
-      - db-network
+      - app-network
     env_file:
       .env
 
 networks:
-  db-network:
-    driver: bridge
-  web-network:
+  app-network:
     driver: bridge
