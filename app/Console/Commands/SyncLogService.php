@@ -1,0 +1,43 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\SyncLog;
+use App\Enums\EntityType;
+
+class SyncLogService
+{
+    /**
+     * Получение даты последней синхронизации сервиса у аккаунта
+     * 
+     * @param int $accountId
+     * @param int $apiServiceId
+     * 
+     * @return string|null
+     */
+    public function getLastSyncDate(int $accountId, int $apiServiceId): ?string
+    {
+        $log = SyncLog::where('account_id', $accountId)
+                      ->where('api_service_id', $apiServiceId)
+                      ->first();
+
+        return $log?->last_sync_at?->toDateString();
+    }
+
+    /**
+     * Создание записи о синхронизации
+     * 
+     * @param int $accountId
+     * @param int $apiServiceId
+     * @param string $date
+     * 
+     * @return void
+     */
+    public function markSynced(int $accountId, int $apiServiceId): void
+    {
+        SyncLog::updateOrCreate(
+            ['account_id' => $accountId, 'api_service_id' => $apiServiceId],
+            ['last_sync_at' => now()->format('Y-m-d')]
+        );
+    }
+}

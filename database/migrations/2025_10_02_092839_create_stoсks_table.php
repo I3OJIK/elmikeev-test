@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::create('stocks', function (Blueprint $table) {
             $table->bigIncrements('id');
+            $table->foreignId('account_id')->constrained()->onDelete('cascade');
             $table->date('date')->nullable();
             $table->date('last_change_date')->nullable();
             $table->string('supplier_article')->nullable();

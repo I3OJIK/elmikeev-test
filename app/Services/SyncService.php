@@ -3,77 +3,110 @@
 namespace App\Services;
 
 use App\Enums\EntityType;
+use App\Jobs\SyncEntityPageJob;
+use App\Models\Account;
+use App\Models\AccountToken;
 use App\Services\Api\ApiClientService;
+use Illuminate\Console\OutputStyle;
+use Illuminate\Support\Facades\Log;
 
 class SyncService
 {
+    private ?OutputStyle $output = null;
+
     public function __construct(
-        private ApiClientService $apiClient
+        private ApiClientService $apiClient,
+        private SyncLogService $SyncLogService
     ) {}
 
     /**
-     * Синхронизирует данные из определенной сущности api в бд
-     * 
-     * @param EntityType $entityType тип сущности
-     * @param array $params параметры запроса
-     * 
-     * @return int
+     * Устанавливает output для вывода в консоль
      */
-    public function syncEntity(EntityType $entityType, array $params = []): int
+    public function setOutput(OutputStyle $output): void
     {
-        $totalProcessed = 0;
-
-        $this->apiClient->fetchPaginatedData(
-            $entityType->endpoint(),
-            $this->getParamsForType($entityType, $params),
-            function($batchData) use ($entityType, &$totalProcessed) {
-                $entityType->modelClass()::insert($batchData);
-                $totalProcessed += count($batchData);
-            }
-        );
-
-        return $totalProcessed;
+        $this->output = $output;
     }
-
-    /**
-     * Синхронизирует все данные из api в бд
-     * 
-     * @return array
+/**
+     * Вывод сообщения в консоль (если есть output)
      */
-    public function syncAll(): array
+    private function info(string $message): void
     {
-        $results = [];
-        
-        foreach (EntityType::cases() as $entityType) {
-            $results[$entityType->value] = $this->syncEntity($entityType, $this->getParamsForType($entityType));
+        if ($this->output) {
+            $this->output->info($message);
         }
-
-        return $results;
+        Log::info($message);
+    }
+    /**
+     * Синхронизация всех аккаунтов и всех токенов.
+     */
+    public function syncAll(): void
+    {
+        $this->info("Начинаем синхронизацию всех данных...");
+        $accounts = Account::with('token.tokenType.apiServices')->get();
+        $this->info("Найдено аккаунтов: " . $accounts->count());
+        foreach ($accounts as $account) {
+            $this->info("Обработка аккаунта {$account->id}");
+            foreach (EntityType::cases() as $entityType) {
+                $this->info("Тип сущности: {$entityType->name} ({$entityType->endpoint()})");
+                $params = $this->getParamsForType($entityType, $account->token);
+                
+                $this->info("Параметры: " . json_encode($params));
+                $this->dispatchJobsForToken($account->token, $entityType, $params);
+            }
+        }
+        $this->info("Все задачи синхронизации поставлены в очередь!");
     }
 
     /**
-     * Формирует параметры запроса для указанного типа данных
+     * Генерация джоб для постраничной синхронизации.
+     */
+    private function dispatchJobsForToken(
+        AccountToken $token,
+        EntityType $entityType,
+        array $params
+    ): void 
+    {
+        $lastPage = $this->apiClient->getLastPage($token, $entityType, $params);
+
+        if ($lastPage === null) {
+            Log::warning("Пропускаем {$entityType->endpoint()} для токена {$token->id}, не удалось получить last_page");
+            return;
+        };
+        $this->info("Страниц колво : {$lastPage} у entity - {$entityType->endpoint()}");
+        // Создаём джобы для всех страниц
+        for ($page = 1; $page <= $lastPage; $page++) {
+            SyncEntityPageJob::dispatch(
+                token: $token,
+                entityType: $entityType,
+                page: $page,
+                params: $params
+            )->onQueue('sync');
+        }
+    }
+
+    /**
+     * Формирует параметры запроса(даты) для указанного типа данных
      * 
      * @param EntityType $entityType
+     * @param AccountToken $token
      * @param array $params
      * 
      * @return array
      */
-    private function getParamsForType(EntityType $entityType, array $params = []): array
+    private function getParamsForType(EntityType $entityType, AccountToken $token): array
     {
-        $baseParams = [];
         
         // Для складов только текущий день
         if ($entityType === EntityType::STOCKS) {
-            return array_merge($baseParams, [
+            return [
                 'dateFrom' => now()->format('Y-m-d')
-            ]);
+            ];
         }
 
         // Для остальных - переданные параметры или по умолчанию
-        return array_merge($baseParams, [
-            'dateFrom' => $params['dateFrom'] ?? '0001-01-01',
-            'dateTo' => $params['dateTo'] ?? now()->format('Y-m-d'),
-        ]);
+        return [
+            'dateFrom' => $this->SyncLogService->getLastSyncDate($token->account_id, $token->api_service_id) ?? '0001-01-01',
+            'dateTo' => now()->format('Y-m-d'),
+        ];
     }
 }

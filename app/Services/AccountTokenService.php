@@ -23,8 +23,6 @@ class AccountTokenService
             );
         }
 
-        return AccountToken::create([
-            $data->toArray()
-        ]);
+        return AccountToken::create($data->toArray());
     }
 }

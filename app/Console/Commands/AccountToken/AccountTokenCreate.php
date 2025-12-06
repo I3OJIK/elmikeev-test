@@ -37,10 +37,9 @@ class AccountTokenCreate extends BaseCommand
                 'token_type_id' => $this->argument('token_type_id'),
                 'token_value' => $tokenValue,
             ]);
-
-            $account = $service->create($data);
+            $accountToken = $service->create($data);
            
-            $this->info("Account token created with ID: {$account->id}"); 
+            $this->info("Account token created with ID: {$accountToken->id}"); 
             return 0;
         } catch (ValidationException $e) {
             return $this->handleValidationException($e);

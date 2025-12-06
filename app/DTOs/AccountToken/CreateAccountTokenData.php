@@ -3,12 +3,13 @@
 namespace App\DTOs\AccountToken;
 
 use Spatie\LaravelData\Attributes\Validation\Exists;
+use Spatie\LaravelData\Attributes\Validation\Unique;
 use Spatie\LaravelData\Data;
 
 class CreateAccountTokenData extends Data
 {
     public function __construct(
-        #[Exists('accounts', 'id')]
+        #[Exists('accounts', 'id'), Unique('account_tokens', 'account_id')]
         public int $account_id,
 
         #[Exists('api_services', 'id')]

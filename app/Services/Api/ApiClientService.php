@@ -2,93 +2,123 @@
 
 namespace App\Services\Api;
 
+use App\Enums\EntityType;
+use App\Enums\TokenLocation;
+use App\Models\AccountToken;
 use Exception;
-use Illuminate\Http\Client\PendingRequest;
-use Illuminate\Http\Client\RequestException;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class ApiClientService
 {
-    private string $baseUrl;
-    private string $apiKey;
-    private $lastRequestEndTime = null;
-
-    public function __construct()
-    {
-        $this->baseUrl = env('API_URL');
-        $this->apiKey = env('API_KEY');
-    }
 
     /**
-     * Выполняет пагинационный запрос данных из API
+     * Получение одной страницы данных 
      * 
-     * @param string $endpoint
-     * @param array $params параметры запроса
-     * @param callable $processor функция для обработки батчей
-     * 
-     * @return void
-     */
-    function fetchPaginatedData(string $endpoint, array $params, callable $processor): void
-    {
-        $page = 1;
-        $batchData = [];
-
-        do{
-            $params['page'] = $page;
-            $request = $this->makeRequest($endpoint, $params);
-            $data = $request['data'];
-            $lastPage = $request['meta']['last_page'];
-            if (empty($data)){
-                break;
-            }
-
-            $batchData = array_merge($batchData, $data);
-            
-            if (count($batchData) >= 2000 || $page >= $lastPage) {
-                $processor($batchData);
-                $batchData = [];
-            }
-
-            if ($page>=$lastPage){
-                break;
-            }
-
-            $page++;
-        } while(true);
-    }
-
-
-    /**
-     * Выполняет одиночный запрос к api
-     * 
-     * @param string $endpoint
+     * @param AccountToken $token
+     * @param EntityType $entityType
      * @param array $params
+     * 
+     * @return Response
+     */
+    public function fetchPage(AccountToken $token, EntityType $entityType, array $params): Response
+    {
+        $service = $token->apiService; 
+        $auth = $this->buildAuth($token);
+
+        // Добавляем query
+        $params = array_merge($params, $auth['query']);
+
+        $request = Http::timeout(30);
+
+        // Добавляем headers 
+        if (!empty($auth['headers'])) {
+            $request = $request->withHeaders($auth['headers']);
+        }
+
+        $response = $request->get(
+            $service->base_url . $entityType->endpoint(),
+            $params
+        );
+
+        return $response;
+    }
+
+    /**
+     * Получение количества старниц 
+     * 
+     * @param AccountToken $token
+     * @param EntityType $entityType
+     * @param array $params
+     * 
+     * @return int|null
+     */
+    public function getLastPage(AccountToken $token, EntityType $entityType, array $params = []): ?int
+    {
+        $auth = $this->buildAuth($token);
+
+        // Добавляем query параметры из токена
+        $params = array_merge($params, $auth['query']);
+
+        $request = Http::timeout(30);
+
+        // Добавляем заголовки
+        if (!empty($auth['headers'])) {
+            $request = $request->withHeaders($auth['headers']);
+        }
+
+        try {
+            // выполняем запрос три раза при ошибках, если succsess ответа нет - 
+            $response = $request
+                ->retry(4, 2000)  
+                ->throw()   
+                ->get($token->apiService->base_url . $entityType->endpoint(), $params);
+
+            $json = $response->json() ?? [];
+
+            return $json['meta']['last_page'];
+
+        } catch (Exception $e) {
+            Log::error("Не удалось получить last_page для {$entityType->endpoint()}: " . $e->getMessage());
+            return null;
+        }
+    }
+
+
+    /**
+     * Собирает токен для header или query
+     * 
+     * @param AccountToken $token
      * 
      * @return array
      */
-    private function makeRequest(string $endpoint, array $params): array
+    private function buildAuth(AccountToken $token): array
     {
-        // Соблюдение rate limit - 1 запрос в секунду
-        if ($this->lastRequestEndTime) {
-            $timeSinceLastRequest = microtime(true) - $this->lastRequestEndTime;
-            if ($timeSinceLastRequest < 1) { 
-                $sleepTime = 1 - $timeSinceLastRequest;
-                usleep($sleepTime * 1000000);
-            }
+        $type = $token->tokenType;
+
+        //подставляем токен в шаблон
+        $value = str_replace("{}", $token->token_value, $type->value_template);
+
+        if ($type->location === TokenLocation::HEADER) {
+            return [
+                'headers' => [
+                    $type->param_name => $value
+                ],
+                'query' => []
+            ];
         }
 
-        \dump($params['page'], $endpoint);
-        $params['key'] = $this->apiKey;
-        $response = Http::timeout(10)
-            ->throw()
-            ->retry(5, 2000,  function (RequestException $re) {
-                return $re->getCode() == 429;
-            })
-            ->get($this->baseUrl . $endpoint, $params);
+        if ($type->location === TokenLocation::QUERY) {
+            return [
+                'headers' => [],
+                'query' => [
+                    $type->param_name => $value
+                ]
+            ];
+        }
 
-        $this->lastRequestEndTime = microtime(true);
-
-        return json_decode($response->body(),true);
+        throw new \Exception("Unknown token location: {$type->location}");
     }
 }
+   

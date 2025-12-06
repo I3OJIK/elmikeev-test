@@ -41,11 +41,5 @@ class AccountToken extends Model
         return $this->belongsTo(TokenType::class, 'token_type_id');
     }
 
-    /**
-     * Поля токена
-     */
-    public function fields(): HasMany
-    {
-        return $this->hasMany(AccountTokenField::class);
-    }
+ 
 }

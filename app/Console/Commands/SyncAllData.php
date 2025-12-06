@@ -6,7 +6,7 @@ use App\Enums\EntityType;
 use App\Services\SyncService;
 use Illuminate\Console\Command;
 
-class SyncAllData extends Command
+class SyncAllData extends BaseCommand
 {
     protected $signature = 'sync:all-data';
 
@@ -15,14 +15,15 @@ class SyncAllData extends Command
 
     public function handle(SyncService $syncService)
     {
-        
+        try {
         $this->info("Начало синхронизации всех данных...");
+        $syncService->setOutput($this->output);
         
-        $results = $syncService->syncAll(EntityType::STOCKS);
-        
+        $results = $syncService->syncAll();
+
         $this->info("\n Результаты синхронизации:");
-        foreach ($results as $type => $count) {
-            $this->info("{$type}: {$count} записей");
+        } catch (\Exception $e) {
+            return $this->handleGenericException($e);
         }
     }
 }

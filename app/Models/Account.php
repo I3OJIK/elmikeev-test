@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Account extends Model
 {
@@ -19,10 +20,10 @@ class Account extends Model
     }
 
     /**
-     * Аккаунт может иметь несколько токенов
+     * Аккаунту принадлежит токен
      */
-    public function tokens(): HasMany
+    public function token(): HasOne
     {
-        return $this->hasMany(AccountToken::class);
+        return $this->hasOne(AccountToken::class);
     }
 }

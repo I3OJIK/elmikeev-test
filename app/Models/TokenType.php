@@ -19,15 +19,6 @@ class TokenType extends Model
         'location' => TokenLocation::class, 
     ];
 
-    public function isQuery(): bool
-    {
-        return $this->location === TokenLocation::QUERY;
-    }
-    
-    public function isHeader(): bool
-    {
-        return $this->location === TokenLocation::HEADER;
-    }
 
      /**
      * Сервисы у которых используется данный тип токена
