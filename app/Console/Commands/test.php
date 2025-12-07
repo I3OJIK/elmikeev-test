@@ -4,7 +4,10 @@ namespace App\Console\Commands;
 
 use App\Enums\EntityType;
 use App\Enums\SyncDataType;
+use App\Jobs\TestApiSpeedJob;
 use App\Models\Account;
+use App\Models\AccountToken;
+use App\Services\Api\ApiClientService;
 use App\Services\SyncService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Http;
@@ -17,48 +20,48 @@ class test extends Command
     protected $description = 'Синхронизация остатков на складах из API в БД';
 
 
-    public function handle(SyncService $syncService)
+    public function handle(ApiClientService $ApiClientService)
     {
-        // dd(Account::first()->token);
+        $token = AccountToken::first();
+    
+        for ($i = 1; $i <= 50; $i++) {
+            TestApiSpeedJob::dispatch($token, $i)->onQueue('test');
+        }
+        
+        $this->info("Запущено 10 тестовых джобов");
+
+
+        // $token = AccountToken::first();
 
 
 
-        // $accounts = Account::with('token.tokenType.apiService')->get();
-        // foreach ($accounts as $account) {
+        // // $accounts = Account::with('token.tokenType.apiService')->get();
+        // // foreach ($accounts as $account) {
 
             
-        // }
-        $baseUrl = 'http://109.73.206.144:6969/api/orders';
-        $apiKey = 'E6kUTYrYwZq2tN4QEtyzsbEBk3ie';
+        // // }
+        // $baseUrl = 'http://109.73.206.144:6969/api/orders';
+        // $apiKey = 'E6kUTYrYwZq2tN4QEtyzsbEBk3ie';
 
-        $dateFrom = '0001-01-01';
-        $dateTo   = now()->format('Y-m-d');
+        // $dateFrom = '0001-01-01';
+        // $dateTo   = now()->format('Y-m-d');
+        // $params = [
+        //     'dateFrom' => $dateFrom,
+        //     'dateTo'   => $dateTo,
+        //     'key'      => $apiKey,
+        // ];
 
+        // $sum = 1;
+        // do {
 
-        $sum = 0;
-        do {
-            $params = [
-                'dateFrom' => $dateFrom,
-                'dateTo'   => $dateTo,
-                'key'      => $apiKey,
-            ];
+        //     $params['page'] = $sum;
+        //     $start = microtime(true);
+        //     $ApiClientService->fetchPage($token,EntityType::SALES,$params);
+        //     $elapsed = microtime(true) - $start; // конец замера
 
-            // Делаем GET-запрос
-            $response = Http::timeout(10)->get($baseUrl, $params);
-            // Выводим все заголовки
-            $this->info("Страница $sum, заголовки ответа:");
-            foreach ($response->headers() as $key => $values) {
-                $this->line("$key: " . implode(', ', $values));
-            }
-            
-            if ($response->status() == 429) {
-                $sum= $sum - 1;
-                $retryAfter = (int) $response->header('Retry-After');
-                sleep($retryAfter); // ждем указанное время
-                
-            }
+        //     $this->info("запрос занял: " . round($elapsed * 1000, 2) . " ms");
 
-            $sum= $sum+1;
-        } while ($sum <= 700);
+        //     $sum = $sum+1;
+    //     } while ($sum <= 700);
     }
 }

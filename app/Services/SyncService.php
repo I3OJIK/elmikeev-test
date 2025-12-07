@@ -26,7 +26,8 @@ class SyncService
     {
         $this->output = $output;
     }
-/**
+
+    /**
      * Вывод сообщения в консоль (если есть output)
      */
     private function info(string $message): void
@@ -41,16 +42,35 @@ class SyncService
      */
     public function syncAll(): void
     {
-        $this->info("Начинаем синхронизацию всех данных...");
         $accounts = Account::with('token.tokenType.apiServices')->get();
+        
         $this->info("Найдено аккаунтов: " . $accounts->count());
+
         foreach ($accounts as $account) {
+             // Проверяем есть ли токен у аккаунта
+            if (!$account->token) {
+                $this->info("У аккаунта {$account->id} нет токена, пропускаем");
+                continue;
+            }
+
             $this->info("Обработка аккаунта {$account->id}");
+
+            $generalParams = $this->getParams($account->token);
+            $stockParams = $this->getParamsForStock();
+
             foreach (EntityType::cases() as $entityType) {
+
                 $this->info("Тип сущности: {$entityType->name} ({$entityType->endpoint()})");
-                $params = $this->getParamsForType($entityType, $account->token);
+
+                // если синхронизация не первая, то удаляем данные за день последней синхронизации для избежания дублей
+                $this->prepareDatabaseForSync($account->token, $entityType);
+                // Выбираем параметры в зависимости от типа
+                $params = ($entityType === EntityType::STOCKS) 
+                    ? $stockParams 
+                    : $generalParams;
                 
                 $this->info("Параметры: " . json_encode($params));
+
                 $this->dispatchJobsForToken($account->token, $entityType, $params);
             }
         }
@@ -72,6 +92,12 @@ class SyncService
             Log::warning("Пропускаем {$entityType->endpoint()} для токена {$token->id}, не удалось получить last_page");
             return;
         };
+
+        if ($lastPage === 0) {
+            Log::warning("Новых данных нет");
+            return;
+        };
+
         $this->info("Страниц колво : {$lastPage} у entity - {$entityType->endpoint()}");
         // Создаём джобы для всех страниц
         for ($page = 1; $page <= $lastPage; $page++) {
@@ -85,28 +111,63 @@ class SyncService
     }
 
     /**
-     * Формирует параметры запроса(даты) для указанного типа данных
+     * Формирует параметры запроса(даты) 
      * 
      * @param EntityType $entityType
-     * @param AccountToken $token
      * @param array $params
      * 
      * @return array
      */
-    private function getParamsForType(EntityType $entityType, AccountToken $token): array
+    private function getParams(AccountToken $token): array
     {
-        
-        // Для складов только текущий день
-        if ($entityType === EntityType::STOCKS) {
-            return [
-                'dateFrom' => now()->format('Y-m-d')
-            ];
-        }
-
-        // Для остальных - переданные параметры или по умолчанию
         return [
             'dateFrom' => $this->SyncLogService->getLastSyncDate($token->account_id, $token->api_service_id) ?? '0001-01-01',
-            'dateTo' => now()->format('Y-m-d'),
+            'dateTo' => now()->addDay()->format('Y-m-d'), // плюс день потому что выборка у апи со строгим условием
         ];
+    }
+
+    /**
+     * Формирует параметры для entity - stock
+     * 
+     * @return array
+     */
+    private function getParamsForStock(): array
+    {
+        return [
+            'dateFrom' => now()->format('Y-m-d')
+        ];
+    }
+
+    /**
+     * Подготовка БД перед синхронизацией
+     */
+    private function prepareDatabaseForSync(
+        AccountToken $token, 
+        EntityType $entityType, 
+    ): void 
+    {
+        $modelClass = $entityType->modelClass();
+        
+        // Для stocks полная очистка
+        if ($entityType === EntityType::STOCKS) {
+            $modelClass::where('account_id', $token->account_id)
+                        ->delete();
+            
+            $this->info("Очищены все данные stocks для account {$token->account_id}");
+            return;
+        }
+        
+        // Для остальных, если синхрониазция не первая  - очищаем данные за дату начала синхронизации
+        // чтобы избежать дублей
+        $lastSyncDate = $this->SyncLogService->getLastSyncDate($token->account_id, $token->api_service_id);
+        
+        if ($lastSyncDate) {
+            $deleteCount = $modelClass::where('account_id', $token->account_id)
+                                     ->whereDate('date', '=', $lastSyncDate)
+                                     ->delete();
+            
+            $this->info("Очищено {$deleteCount} записей за {$lastSyncDate} для {$entityType->value}");
+            return;
+        }
     }
 }

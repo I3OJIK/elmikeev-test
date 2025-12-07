@@ -28,8 +28,9 @@ class ApiClientService
         $auth = $this->buildAuth($token);
 
         // Добавляем query
-        $params = array_merge($params, $auth['query']);
-
+        if (!empty($auth['query'])) {
+            $params = array_merge($params, $auth['query']);
+        }
         $request = Http::timeout(30);
 
         // Добавляем headers 
@@ -41,6 +42,19 @@ class ApiClientService
             $service->base_url . $entityType->endpoint(),
             $params
         );
+
+        // Обработка 429
+        if ($response->status() === 429) {
+            $retryAfter = (int) ($response->header('Retry-After') ?? 5);
+            Log::warning("429 Too Many Requests, повтор через {$retryAfter} сек.");
+            sleep($retryAfter);
+            throw new Exception('429 Too Many Requests');
+        }
+
+        if (!$response->successful()) {
+            Log::error("API error: " . $response->status());
+            throw new Exception("API error: " . $response->status());
+        }
 
         return $response;
     }
@@ -69,13 +83,17 @@ class ApiClientService
         }
 
         try {
-            // выполняем запрос три раза при ошибках, если succsess ответа нет - 
+            // выполняем запрос три раза при ошибках
             $response = $request
                 ->retry(4, 2000)  
                 ->throw()   
                 ->get($token->apiService->base_url . $entityType->endpoint(), $params);
 
             $json = $response->json() ?? [];
+
+            if (!$json['data']){
+                return 0;
+            }
 
             return $json['meta']['last_page'];
 

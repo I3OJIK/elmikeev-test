@@ -21,7 +21,15 @@ class SyncLogService
                       ->where('api_service_id', $apiServiceId)
                       ->first();
 
-        return $log?->last_sync_at?->toDateString();
+        if ($log === null) {
+            return null;
+        }
+
+        if ($log->last_sync_at === null) {
+            return null;
+        }
+
+        return $log->last_sync_at->format('Y-m-d');
     }
 
     /**
@@ -37,7 +45,7 @@ class SyncLogService
     {
         SyncLog::updateOrCreate(
             ['account_id' => $accountId, 'api_service_id' => $apiServiceId],
-            ['last_sync_at' => now()->format('Y-m-d')]
+            ['last_sync_at' => now()]
         );
     }
 }
