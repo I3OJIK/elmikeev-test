@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::create('incomes', function (Blueprint $table) {
             $table->bigIncrements('id');
+            $table->foreignId('account_id')->constrained()->onDelete('cascade');
             $table->bigInteger('income_id')->nullable()->index();
             $table->string('number')->nullable();
             $table->date('date')->nullable();
@@ -25,6 +26,8 @@ return new class extends Migration
             $table->date('date_close')->nullable();
             $table->string('warehouse_name')->nullable();
             $table->bigInteger('nm_id')->nullable();
+
+            $table->unique(['income_id', 'nm_id', 'account_id']);
         });
         
     }

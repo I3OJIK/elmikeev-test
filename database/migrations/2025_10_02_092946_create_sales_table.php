@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::create('sales', function (Blueprint $table) {
             $table->bigIncrements('id');
+            $table->foreignId('account_id')->constrained()->onDelete('cascade');
             $table->string('g_number')->nullable();
             $table->date('date')->nullable();
             $table->date('last_change_date')->nullable();
@@ -40,6 +41,9 @@ return new class extends Migration
             $table->string('category')->nullable();
             $table->string('brand')->nullable();
             $table->boolean('is_storno')->nullable();
+
+            // Уникальный состоавной ключ для предотвращения дублей
+            $table->unique(['sale_id', 'account_id']);
         });
         
     }

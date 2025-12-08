@@ -12,8 +12,8 @@ RUN apt-get update && apt-get install -y \
     libzip-dev \
     libpng-dev \
     librabbitmq-dev \
-    libsodium-dev
-    # supervisor
+    libsodium-dev \
+    supervisor
     RUN usermod -u 1000 www-data && groupmod -g 1000 www-data    
 RUN docker-php-ext-install -j$(nproc) \
     bcmath \

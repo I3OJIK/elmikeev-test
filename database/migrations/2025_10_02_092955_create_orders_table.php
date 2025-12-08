@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::create('orders', function (Blueprint $table) {
             $table->bigIncrements('id');
+            $table->foreignId('account_id')->constrained()->onDelete('cascade');
             $table->string('g_number')->nullable();
             $table->dateTime('date')->nullable();
             $table->date('last_change_date')->nullable();
@@ -31,6 +32,13 @@ return new class extends Migration
             $table->string('brand')->nullable();
             $table->boolean('is_cancel')->default(false);
             $table->dateTime('cancel_dt')->nullable();
+
+            $table->unique([
+                'g_number',
+                'nm_id', 
+                'account_id',
+                'date' 
+            ]);
         });
         
     }

@@ -16,9 +16,10 @@ enum EntityType: string
     
     /**
      * Получить класс модели для типа данных
+     * 
      * @return string
      */
-    public function modelClass(): string
+    public function getModelClass(): string
     {
         return match($this) {
             self::SALES => Sale::class,
@@ -26,10 +27,5 @@ enum EntityType: string
             self::STOCKS => Stock::class,
             self::INCOMES => Income::class,
         };
-    }
-
-    public function endpoint(): string
-    {
-        return $this->value;
     }
 }
