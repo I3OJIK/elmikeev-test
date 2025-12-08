@@ -9,7 +9,7 @@ use Illuminate\Validation\ValidationException;
 
 class CreateCompany extends BaseCommand
 {
-    protected $signature = 'company:create
+    protected $signature = 'app:create-company
         {name : Название компании (максимум 50 символов)}';
 
     protected $description = 'Создать новую компанию в системе';
