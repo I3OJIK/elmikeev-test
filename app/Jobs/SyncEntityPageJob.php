@@ -44,7 +44,7 @@ class SyncEntityPageJob implements ShouldQueue
             
             if (!empty($rows)) {
                 $syncService->upsertRows($this->entityType, $rows);
-                Log::info("Cтраница {$this->page} сохранена, status api - {$response->status()},limit remaining:  {$response->header('X-Ratelimit-Remaining')}");
+                Log::info("Cтраница {$this->page} сохранена, entity - {$this->entityType->value}, status api - {$response->status()},limit remaining:  {$response->header('X-Ratelimit-Remaining')}");
             }
             // Обновляем лог последней синхронизации после успешной вставки последней страницы
             $lastPage = $data['meta']['last_page'] ?? $this->page;
