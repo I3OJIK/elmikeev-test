@@ -9,6 +9,10 @@ abstract class BaseCommand extends Command
 {
     /**
      * Обработка ошибок валидации для консольных команд
+     * 
+     * @param ValidationException $e
+     * 
+     * @return int
      */
     protected function handleValidationException(ValidationException $e): int
     {
@@ -20,17 +24,21 @@ abstract class BaseCommand extends Command
             }
         }
         
-        return 1;
+        return SELF::FAILURE;
     }
     
     /**
      * Обработка общих исключений
+     * 
+     * @param \Exception $e
+     * 
+     * @return int
      */
     protected function handleGenericException(\Exception $e): int
     {
         $this->error("Error: " . $e->getMessage());
         
-        return 1;
+        return SELF::FAILURE;
     }
 }
 

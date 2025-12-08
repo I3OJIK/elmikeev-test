@@ -3,17 +3,16 @@
 namespace App\Console\Commands;
 
 use App\DTOs\AttachTokenTypeToServiceData;
-use App\Services\Api\ApiClientService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class AttachTokenTypeToService extends BaseCommand
 {
-    protected $signature = 'data:attach-token-type 
-                            {api_service_id : ID API service}
-                            {token_type_id : ID token}';
+    protected $signature = 'app:attach-token-type 
+        {api_service_id : ID API-сервиса}
+        {token_type_id : ID типа токена}';
 
-    protected $description = 'Attach Token Type To Service';
+    protected $description = 'Привязать тип токена к API-сервису';
 
 
     public function handle()
@@ -29,8 +28,8 @@ class AttachTokenTypeToService extends BaseCommand
                 $data->toArray()
             );
            
-            $this->info("Token type attached"); 
-            return 0;
+            $this->info("Тип токена прикреплен"); 
+            return SELF::SUCCESS;
         } catch (ValidationException $e) {
             return $this->handleValidationException($e);
         } catch (\Exception $e) {

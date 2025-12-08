@@ -3,23 +3,19 @@
 namespace App\Console\Commands\TokenType;
 
 use App\Console\Commands\BaseCommand;
-use App\DTOs\Account\CreateAccountData;
-use App\DTOs\AccountToken\CreateAccountTokenData;
 use App\DTOs\TokenType\CreateTokenTypeData;
-use App\Services\AccountService;
-use App\Services\AccountTokenService;
 use App\Services\TokenTypeService;
 use Illuminate\Validation\ValidationException;
 
 class TokenTypeCreate extends BaseCommand
 {
-    protected $signature = 'token-type:create
-                            {name : Token type name, e.g. Bearer, Basic, API Key}
-                            {location : header or query}
-                            {param_name : Name of header or query parameter}
-                            {--value_template= : Template, e.g. "Bearer {}"}';
+    protected $signature = 'app:create-token-type
+        {name : Название типа токена (например: Bearer, Basic, API Key)}
+        {location : Место размещения (header или query)}
+        {param_name : Имя параметра в заголовке или query-строке}
+        {--value_template= : Шаблон значения (например: "Bearer {}")}';
 
-    protected $description = 'Create a new token type';
+    protected $description = 'Создать новый тип токена для API-авторизации';
 
     public function handle(TokenTypeService $service): int
     {
@@ -34,8 +30,8 @@ class TokenTypeCreate extends BaseCommand
 
             $tokenType = $service->create($data);
            
-            $this->info("token type created with ID: {$tokenType->id}"); 
-            return 0;
+            $this->info("Тип токена создан с ID: {$tokenType->id}"); 
+            return SELF::SUCCESS;
         } catch (ValidationException $e) {
             return $this->handleValidationException($e);
         } catch (\Exception $e) {

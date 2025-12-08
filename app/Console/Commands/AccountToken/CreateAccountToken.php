@@ -3,23 +3,21 @@
 namespace App\Console\Commands\AccountToken;
 
 use App\Console\Commands\BaseCommand;
-use App\DTOs\Account\CreateAccountData;
 use App\DTOs\AccountToken\CreateAccountTokenData;
-use App\Services\AccountService;
 use App\Services\AccountTokenService;
 use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
 
-class AccountTokenCreate extends BaseCommand
+class CreateAccountToken extends BaseCommand
 {
-    protected $signature = 'account-token:create
-                            {account_id}
-                            {api_service_id}
-                            {token_type_id}
-                            {token_value}
-                            {--encode64 : Encode token_value in Base64 for Basic auth}';
+    protected $signature = 'app:create-account-token
+        {account_id : ID аккаунта компании}
+        {api_service_id : ID API-сервиса}
+        {token_type_id : ID типа токена}
+        {token_value : Значение токена (API ключ, пароль и т.д.)}
+        {--encode64 : Закодировать token_value в Base64 (для Basic авторизации)}';
 
-    protected $description = 'Create a new account-token';
+    protected $description = 'Создать новый токен доступа для аккаунта';
 
     public function handle(AccountTokenService $service): int
     {
@@ -39,13 +37,13 @@ class AccountTokenCreate extends BaseCommand
             ]);
             $accountToken = $service->create($data);
            
-            $this->info("Account token created with ID: {$accountToken->id}"); 
-            return 0;
+            $this->info("Токен аккаунта создан с ID: {$accountToken->id}"); 
+            return Self::SUCCESS;
         } catch (ValidationException $e) {
             return $this->handleValidationException($e);
         } catch (InvalidArgumentException $e) {
             $this->error("error: {$e->getMessage()}");
-            return 1;
+            return Self::FAILURE;
         } catch (\Exception $e) {
             return $this->handleGenericException($e);
         }

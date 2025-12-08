@@ -10,7 +10,6 @@ use App\Services\SyncService;
 use Exception;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class SyncEntityPageJob implements ShouldQueue
@@ -35,7 +34,6 @@ class SyncEntityPageJob implements ShouldQueue
 
         Try {
             $response = $apiClient->fetchPage($this->token, $this->entityType, $this->params);
-            
             $data = $response->json();
             $rows = $data['data'];
 
@@ -46,7 +44,7 @@ class SyncEntityPageJob implements ShouldQueue
             
             if (!empty($rows)) {
                 $syncService->upsertRows($this->entityType, $rows);
-                Log::info("Cтраница {$this->page} сохранена, status api - {$response->status()}");
+                Log::info("Cтраница {$this->page} сохранена, status api - {$response->status()},limit remaining:  {$response->header('X-Ratelimit-Remaining')}");
             }
             // Обновляем лог последней синхронизации после успешной вставки последней страницы
             $lastPage = $data['meta']['last_page'] ?? $this->page;

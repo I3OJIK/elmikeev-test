@@ -7,14 +7,13 @@ use App\DTOs\ApiService\CreateApiServiceData;
 use App\Services\ApiServiceService;
 use Illuminate\Validation\ValidationException;
 
-class ApiServiceCreate extends BaseCommand
+class CreateApiService extends BaseCommand
 {
-    protected $signature = 'api-service:create
-                            {name : API service name (max: 50 chars)}
-                            {base_url : Base URL of service}
-                            {--inactive : Create service as inactive}';
+    protected $signature = 'app:create-api-service
+        {name : Название API-сервиса (максимум 50 символов)}
+        {base_url : Базовый URL API-сервиса}';
 
-    protected $description = 'Create a new API service';
+    protected $description = 'Создать новый API-сервис';
 
     public function handle(ApiServiceService $service): int
     {
@@ -22,13 +21,12 @@ class ApiServiceCreate extends BaseCommand
             $data = CreateApiServiceData::validateAndCreate([
                 'name'      => $this->argument('name'),
                 'base_url'  => $this->argument('base_url'),
-                'is_active' => !$this->option('inactive'),
             ]);
 
             $apiService = $service->create($data);
 
-            $this->info("API Service created with ID: {$apiService->id} ");
-            return 0;
+            $this->info("Апи сервис создан с ID: {$apiService->id} ");
+            return Self::SUCCESS;
 
         } catch (ValidationException $e) {
             return $this->handleValidationException($e);

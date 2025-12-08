@@ -4,8 +4,14 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property int $id Уникальный идентификатор токена
+ * @property int $account_id ID аккаунта-владельца
+ * @property int $api_service_id ID API сервиса
+ * @property int $token_type_id ID типа токена
+ * @property string $token_value Значение токена 
+ */
 class AccountToken extends Model
 {
     protected $fillable = [
@@ -19,6 +25,8 @@ class AccountToken extends Model
 
     /**
      * Аккаунт, которому принадлежит токен
+     * 
+     * @return BelongsTo
      */
     public function account(): BelongsTo
     {
@@ -27,6 +35,8 @@ class AccountToken extends Model
 
     /**
      * API сервис, для которого этот токен
+     * 
+     * @return BelongsTo
      */
     public function apiService(): BelongsTo
     {
@@ -35,11 +45,11 @@ class AccountToken extends Model
 
     /**
      * Тип токена
+     * 
+     * @return BelongsTo
      */
     public function tokenType(): BelongsTo
     {
         return $this->belongsTo(TokenType::class, 'token_type_id');
     }
-
- 
 }

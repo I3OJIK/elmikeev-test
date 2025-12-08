@@ -9,7 +9,13 @@ use InvalidArgumentException;
 
 class AccountTokenService
 {
-
+    /**
+     * Добавление апи сервису поддерживаемого токена
+     * 
+     * @param CreateAccountTokenData $data
+     * 
+     * @return AccountToken
+     */
     public function create(CreateAccountTokenData $data): AccountToken
     {
         $exists = DB::table('api_service_token_types')

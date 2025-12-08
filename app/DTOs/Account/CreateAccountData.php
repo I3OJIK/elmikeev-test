@@ -15,7 +15,5 @@ class CreateAccountData extends Data
         
         #[Unique('accounts', 'name'), Max(30)]
         public string $name,
-        
-        public ?bool $is_active = true,
     ) {}
 }

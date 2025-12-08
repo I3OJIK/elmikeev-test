@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\SyncLog;
-use App\Enums\EntityType;
 
 class SyncLogService
 {

@@ -2,21 +2,31 @@
 
 namespace App\Console\Commands;
 
-use App\Enums\EntityType;
+use App\DTOs\Account\SyncAccountData;
 use App\Services\SyncService;
-use Illuminate\Console\Command;
+use Illuminate\Validation\ValidationException;
 
-class SyncAccount extends Command
+class SyncAccount extends BaseCommand
 {
-    protected $signature = 'sync:account 
-                            {--dateFrom= : Дата начала (Y-m-d)} 
-                            {--dateTo= : Дата окончания (Y-m-d)}';
+    protected $signature = 'app:sync-account {account_id}';
 
-    protected $description = 'Синхронизация продаж из API в БД';
+    protected $description = 'Синхронизация определенного аккаунта';
 
 
     public function handle(SyncService $syncService)
     {
+        try {
+            $data = SyncAccountData::validateAndCreate([
+                'account_id' => $this->argument('account_id'),
+            ]);
+            $this->info("Начало синхронизации аккаунта {$data->account_id}");
+            $syncService->setOutput($this->output);
 
+            $syncService->syncAccount($data->account_id);
+        } catch (ValidationException $e) {
+            return $this->handleValidationException($e);
+        } catch (\Exception $e) {
+            return $this->handleGenericException($e);
+        }
     }
 }

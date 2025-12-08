@@ -8,6 +8,7 @@ use App\Models\Account;
 use App\Models\AccountToken;
 use App\Services\Api\ApiClientService;
 use Illuminate\Console\OutputStyle;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -22,9 +23,9 @@ class SyncService
     {}
 
     /**
-     * 
-     *  @return void
      * Устанавливает output для вывода в консоль
+     * 
+     * @return void
      */
     public function setOutput(OutputStyle $output): void
     {
@@ -58,27 +59,38 @@ class SyncService
         foreach ($accounts as $account) {
             $this->info("Обработка аккаунта {$account->id}");
 
-            $generalParams = $this->getParams($account->token);
-            $stockParams = $this->getParamsForStock();
-
-            foreach (EntityType::cases() as $entityType) {
-                $this->info("Тип сущности: {$entityType->name} ({$entityType->endpoint()})");
-
-                // Выбираем параметры в зависимости от типа
-                $params = ($entityType === EntityType::STOCKS) 
-                    ? $stockParams 
-                    : $generalParams;
-                
-                $this->info("Параметры: " . json_encode($params));
-
-                $this->dispatchJobsForToken($account->token, $entityType, $params);
-            }
+            $this->syncAccountData($account);
         }
         $this->info("Все задачи синхронизации поставлены в очередь!");
     }
 
     /**
-     * Генерация джоб для постраничной синхронизации.
+     * Синхронизация одного аккаунта
+     * 
+     * @param int $accountId
+     * 
+     * @return void
+     */
+    public function syncAccount(int $accountId): void
+    {
+        $account = Account::with('token.tokenType.apiServices')
+            ->whereHas('token')
+            ->find($accountId);
+
+        if (!$account){
+            throw new ModelNotFoundException("Account token not found");
+        }
+
+        $this->syncAccountData($account);
+    }
+
+    /**
+     * Генерация задач для постраничной синхронизации
+     * 
+     * @param AccountToken $token
+     * @param EntityType $entityType
+     * @param array $params
+     * @return void
      */
     private function dispatchJobsForToken(
         AccountToken $token,
@@ -89,7 +101,7 @@ class SyncService
         $lastPage = $this->apiClient->getLastPage($token, $entityType, $params);
 
         if ($lastPage === null) {
-            Log::warning("Пропускаем {$entityType->endpoint()} для токена {$token->id}, не удалось получить last_page");
+            Log::warning("Пропускаем {$entityType->value} для токена {$token->id}, не удалось получить last_page");
             return;
         };
 
@@ -98,7 +110,7 @@ class SyncService
             return;
         };
 
-        $this->info("Страниц колво : {$lastPage} у entity - {$entityType->endpoint()}");
+        $this->info("Страниц колво : {$lastPage} у entity - {$entityType->value}");
         // Создаём джобы для всех страниц
         for ($page = 1; $page <= $lastPage; $page++) {
             SyncEntityPageJob::dispatch(
@@ -119,11 +131,9 @@ class SyncService
      */
     public function upsertRows(EntityType $entityType,array $rows): void
     {
-        $modelClass = $entityType->modelClass();
-        
-        $modelClass = $entityType->modelClass();
+        $modelClass = $entityType->getModelClass();
         $uniqueKeys = $modelClass::getUniqueKey();
-        $updateColumns = $this->getUpdateColumns($rows, $uniqueKeys);
+        $updateColumns = $this->getUpdateColumns($entityType, $rows);
 
         try {
             $affected = DB::transaction(function () use ($modelClass, $rows, $uniqueKeys, $updateColumns) {
@@ -144,20 +154,49 @@ class SyncService
     /**
      * Получить колонки для обновления
      * 
-     * @param mixed $model
+     * @param EntityType $entityType
      * @param array $rows
      * 
      * @return array
      */
-    private function getUpdateColumns($model, array $rows): array
+    private function getUpdateColumns(EntityType $entityType, array $rows): array
     {
+        $modelClass = $entityType->getModelClass(); 
         //обновляем все, кроме уникальных ключей
         $allColumns = array_keys($rows[0] ?? []);
-        $uniqueKeys = $model->getUniqueKey();
+        $uniqueKeys = $modelClass::getUniqueKey();
         
         return array_values(array_diff($allColumns, $uniqueKeys));
     }
 
+    /**
+     * Общая логика синхронизации для одного аккаунта
+     * 
+     * @param Account $account
+     * 
+     * @return void
+     */
+    private function syncAccountData(Account $account): void
+    {
+        $token = $account->token;
+        
+        $generalParams = $this->getParams($token);
+        $stockParams = $this->getParamsForStock();
+
+        foreach (EntityType::cases() as $entityType) {
+            $this->info("Тип сущности: {$entityType->value}");
+
+            // Выбираем параметры в зависимости от типа
+            $params = ($entityType === EntityType::STOCKS) 
+                ? $stockParams 
+                : $generalParams;
+            
+            $this->info("Параметры: " . json_encode($params));
+
+            $this->dispatchJobsForToken($token, $entityType, $params);
+        }
+    }
+    
     /**
      * Формирует параметры запроса(даты) 
      * 

@@ -11,7 +11,5 @@ class CreateCompanyData extends Data
     public function __construct(
         #[Unique('companies', 'name'), Max(30)]
         public string $name,
-        
-        public ?bool $is_active = true,
     ) {}
 }

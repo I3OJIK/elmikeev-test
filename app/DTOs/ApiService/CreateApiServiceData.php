@@ -18,8 +18,5 @@ class CreateApiServiceData extends Data
 
         #[Url(['http', 'https'])]
         public string $base_url,
-
-        
-        public ?bool $is_active = true,
     ) {}
 }

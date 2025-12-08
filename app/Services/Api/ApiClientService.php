@@ -12,7 +12,6 @@ use Illuminate\Support\Facades\Log;
 
 class ApiClientService
 {
-
     /**
      * Получение одной страницы данных 
      * 
@@ -39,7 +38,7 @@ class ApiClientService
         }
 
         $response = $request->get(
-            $service->base_url . $entityType->endpoint(),
+            $service->base_url . $entityType->value,
             $params
         );
 
@@ -87,7 +86,7 @@ class ApiClientService
             $response = $request
                 ->retry(4, 2000)  
                 ->throw()   
-                ->get($token->apiService->base_url . $entityType->endpoint(), $params);
+                ->get($token->apiService->base_url . $entityType->value, $params);
 
             $json = $response->json() ?? [];
 
@@ -98,7 +97,7 @@ class ApiClientService
             return $json['meta']['last_page'];
 
         } catch (Exception $e) {
-            Log::error("Не удалось получить last_page для {$entityType->endpoint()}: " . $e->getMessage());
+            Log::error("Не удалось получить last_page для {$entityType->value}: " . $e->getMessage());
             return null;
         }
     }
@@ -136,7 +135,7 @@ class ApiClientService
             ];
         }
 
-        throw new \Exception("Unknown token location: {$type->location}");
+        throw new \Exception("Неизвестный token location: {$type->location}");
     }
 }
    

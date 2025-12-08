@@ -7,13 +7,12 @@ use App\DTOs\Company\CreateCompanyData;
 use App\Services\CompanyService;
 use Illuminate\Validation\ValidationException;
 
-class CompanyCreate extends BaseCommand
+class CreateCompany extends BaseCommand
 {
     protected $signature = 'company:create
-                            {name : Company name (max: 50 chars)}
-                            {--inactive : Create company as inactive}';
+        {name : Название компании (максимум 50 символов)}';
 
-    protected $description = 'Create a new company';
+    protected $description = 'Создать новую компанию в системе';
 
     public function handle(CompanyService $service): int
     {
@@ -21,13 +20,12 @@ class CompanyCreate extends BaseCommand
             // Создаем DTO и валидируем
             $data = CreateCompanyData::validateAndCreate([
                 'name' => $this->argument('name'),
-                'is_active' => !$this->option('inactive') // инвертируем флаг
             ]);
 
             $company = $service->create($data);
            
-            $this->info("Company created with ID: {$company->id}"); 
-            return 0;
+            $this->info("Компания создана с ID: {$company->id}"); 
+            return Self::SUCCESS;
         } catch (ValidationException $e) {
             return $this->handleValidationException($e);
         } catch (\Exception $e) {
