@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('stocks', function (Blueprint $table) {
             $table->bigIncrements('id');
             $table->foreignId('account_id')->constrained()->onDelete('cascade');
-            $table->date('date')->nullable();
+            $table->date('date');
             $table->date('last_change_date')->nullable();
             $table->string('supplier_article')->nullable();
             $table->string('tech_size')->nullable();
@@ -23,16 +23,18 @@ return new class extends Migration
             $table->boolean('is_supply')->nullable();
             $table->boolean('is_realization')->nullable();
             $table->integer('quantity_full')->nullable();
-            $table->string('warehouse_name')->nullable();
+            $table->string('warehouse_name');
             $table->integer('in_way_to_client')->nullable();
             $table->integer('in_way_from_client')->nullable();
-            $table->bigInteger('nm_id')->nullable();
+            $table->bigInteger('nm_id');
             $table->string('subject')->nullable();
             $table->string('category')->nullable();
             $table->string('brand')->nullable();
             $table->bigInteger('sc_code')->nullable();
             $table->float('price')->nullable();
             $table->integer('discount')->nullable();
+
+            $table->unique(['date', 'account_id', 'warehouse_name', 'nm_id']);
         });
         
     }

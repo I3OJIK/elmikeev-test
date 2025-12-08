@@ -6,6 +6,7 @@ use App\Enums\EntityType;
 use App\Models\AccountToken;
 use App\Services\Api\ApiClientService;
 use App\Services\SyncLogService;
+use App\Services\SyncService;
 use Exception;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -28,7 +29,7 @@ class SyncEntityPageJob implements ShouldQueue
     )
     {}
 
-    public function handle(ApiClientService $apiClient, SyncLogService $syncLog): void
+    public function handle(ApiClientService $apiClient, SyncLogService $syncLog, SyncService $syncService): void
     {
         $this->params['page'] = $this->page;
 
@@ -44,15 +45,11 @@ class SyncEntityPageJob implements ShouldQueue
             }
             
             if (!empty($rows)) {
-                $modelClass = $this->entityType->modelClass();
-                $modelClass::insert($rows);
-                Log::info("Сохранено " . count($rows) . " записей для {$this->entityType->value},
-                    страница {$this->page}, status - {$response->status()}, X-Ratelimit-Remaining -
-                    {$response->header('X-Ratelimit-Remaining')} ");
+                $syncService->upsertRows($this->entityType, $rows);
+                Log::info("Cтраница {$this->page} сохранена, status api - {$response->status()}");
             }
-
             // Обновляем лог последней синхронизации после успешной вставки последней страницы
-            $lastPage = $response['meta']['last_page'] ?? $this->page;
+            $lastPage = $data['meta']['last_page'] ?? $this->page;
             if ($this->page >= $lastPage) {
                 $syncLog->markSynced($this->token->account_id, $this->token->api_service_id);
             }
@@ -62,3 +59,4 @@ class SyncEntityPageJob implements ShouldQueue
         }
     }
 }
+    
