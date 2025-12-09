@@ -1,0 +1,31 @@
+name: Deployment of current GitHub repo and use of docker-compose on a server through SSH
+
+on:
+ push:
+  branches: [main, develop]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: Rxinui/ssh-deploy-repo-action@v1.1
+        with:
+          ssh-user: trainer1
+          ssh-password: ${{ secrets.HOSTING_PASSWORD }}
+          ssh-domain: ${{ secrets.HOSTING_DOMAIN }}
+          git-clone-by: https
+          target-branch: main
+          target-directory: /home/trainer1/test-project
+          pre-command: | # multi-line script possible
+            cd $TARGET_DIRECTORY && 
+            docker compose down -v --remove-orphans || echo "No compose file yet"
+          post-command: |
+            cp .env.example .env
+            docker compose up -d
+            docker compose exec php composer install -o
+            docker compose exec php php artisan migrate
+            docker compose exec -u root php service supervisor start 
+            docker compose exec -u root php supervisorctl reread
+            docker compose exec -u root php supervisorctl update
+            docker compose exec -u root php supervisorctl start laravel-sync-worker:*

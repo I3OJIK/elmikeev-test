@@ -14,7 +14,7 @@ RUN apt-get update && apt-get install -y \
     librabbitmq-dev \
     libsodium-dev \
     supervisor
-    RUN usermod -u 1000 www-data && groupmod -g 1000 www-data    
+    RUN usermod -u 1001 www-data && groupmod -g 1001 www-data    
 RUN docker-php-ext-install -j$(nproc) \
     bcmath \
     pdo \
